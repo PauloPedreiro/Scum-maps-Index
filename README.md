@@ -2,6 +2,12 @@
 
 A precise coordinate mapping system for SCUM game that converts in-game coordinates to pixel positions on a 1080x1080 map image.
 
+## Screenshot
+
+![SCUM Map Coordinate Mapper Interface](assets/screenshot.png)
+
+*The interface shows the map with calibration grid, quadrant markers, and coordinate input system.*
+
 ## Features
 
 - **High-Precision Calibration**: Uses linear regression (least squares method) with 16 intersection points for maximum accuracy
