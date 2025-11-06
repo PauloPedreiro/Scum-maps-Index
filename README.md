@@ -4,7 +4,7 @@ A precise coordinate mapping system for SCUM game that converts in-game coordina
 
 ## Screenshot
 
-![SCUM Map Coordinate Mapper Interface](assets/screenshot.png)
+![SCUM Map Coordinate Mapper Interface](assets/Screenshot.png)
 
 *The interface shows the map with calibration grid, quadrant markers, and coordinate input system.*
 
