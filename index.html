@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SCUM - Mapa de Coordenadas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #1e3c72;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .input-section {
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        input[type="text"] {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #2a5298;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #1e3c72;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .map-container {
+            position: relative;
+            width: 100%;
+            max-width: 1080px;
+            margin: 0 auto;
+            background: #f0f0f0;
+            border: 3px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .map-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%; /* Mantém proporção 1:1 */
+        }
+
+        .map-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: red;
+            border: 3px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.8), 0 0 20px rgba(255, 0, 0, 0.5);
+            z-index: 10;
+            pointer-events: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 10px rgba(255, 0, 0, 0.8), 0 0 20px rgba(255, 0, 0, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 15px rgba(255, 0, 0, 1), 0 0 30px rgba(255, 0, 0, 0.7);
+            }
+        }
+
+        .info-panel {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #2a5298;
+        }
+
+        .info-panel h2 {
+            color: #1e3c72;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .info-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .info-item strong {
+            color: #2a5298;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .info-item span {
+            color: #333;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #c33;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .quadrant-badge {
+            display: inline-block;
+            background: #2a5298;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-top: 5px;
+        }
+
+        .calibration-marker {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            pointer-events: none;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+        }
+
+        .center-marker {
+            background: #00ff00;
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.8), 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+
+        .ref-marker {
+            background: #00ffff;
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        .ref2-marker {
+            background: #ff00ff;
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.8), 0 0 20px rgba(255, 0, 255, 0.5);
+        }
+
+        #calibration-grid line {
+            stroke: rgba(255, 255, 0, 0.3);
+            stroke-width: 1;
+        }
+
+        .calibration-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #e8f4f8;
+            border-radius: 6px;
+            border-left: 4px solid #00aaff;
+        }
+
+        .calibration-info h3 {
+            color: #00aaff;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .calibration-point {
+            margin: 8px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .draggable-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #ff6b6b;
+            border: 3px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            cursor: move;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.8), 0 0 20px rgba(255, 107, 107, 0.5);
+            transition: transform 0.1s;
+        }
+
+        .draggable-marker:hover {
+            transform: translate(-50%, -50%) scale(1.3);
+            z-index: 21;
+        }
+
+        .draggable-marker.dragging {
+            opacity: 0.7;
+            z-index: 25;
+        }
+
+        .marker-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .calibration-controls {
+            margin-top: 15px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 6px;
+            border-left: 4px solid #ffc107;
+            display: none;
+        }
+
+        .calibration-controls.active {
+            display: block;
+        }
+
+        .calibration-controls h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .calibration-controls p {
+            color: #856404;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧭 SCUM - Mapa de Coordenadas</h1>
+        
+        <div class="input-section">
+            <label for="coords-input">Cole as coordenadas do jogo:</label>
+            <input 
+                type="text" 
+                id="coords-input" 
+                placeholder='Ex: {X=-142798.922 Y=-142780.359 Z=39619.605|P=0.000000 Y=0.000000 R=0.000000}'
+            >
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button onclick="processCoordinates()">📍 Marcar no Mapa</button>
+                <button onclick="toggleCalibrationGrid()" id="grid-toggle">📐 Mostrar Grade de Calibração</button>
+                <button onclick="toggleCalibrationMode()" id="calibration-mode-toggle">🎯 Modo Calibração</button>
+                <button onclick="saveCalibration()" id="save-btn" style="display: none; background: #28a745;">💾 Gravar Calibração</button>
+                <button onclick="exportCalibration()" id="export-btn" style="display: none; background: #17a2b8;">📥 Gerar Arquivo</button>
+            </div>
+        </div>
+
+        <div class="error" id="error-message"></div>
+
+        <div class="map-container">
+            <div class="map-wrapper" id="map-wrapper">
+                <img src="1080x1080.png" alt="Mapa SCUM" class="map-image" id="map-image">
+                <div class="marker" id="marker" style="display: none;"></div>
+                <!-- Marcadores de calibração -->
+                <div class="calibration-marker center-marker" id="center-marker" style="display: none;" title="Centro: X=-142798.922, Y=-142780.359"></div>
+                <!-- Grade de calibração -->
+                <svg id="calibration-grid" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;"></svg>
+                <!-- Container para marcadores arrastáveis -->
+                <div id="draggable-markers-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;"></div>
+            </div>
+        </div>
+
+        <div class="calibration-controls" id="calibration-controls">
+            <h3>🎯 Modo Calibração Ativo</h3>
+            <p>• Arraste os marcadores vermelhos para os cruzamentos corretos dos quadrantes no mapa</p>
+            <p>• Cada marcador representa um cruzamento entre 4 quadrantes</p>
+            <p>• Após posicionar todos, clique em "Gravar Calibração" para salvar</p>
+            <p>• Use "Gerar Arquivo" para exportar os dados de calibração</p>
+        </div>
+
+        <div class="info-panel" id="info-panel" style="display: none;">
+            <h2>📊 Informações da Posição</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Coordenadas do Jogo:</strong>
+                    <span id="game-coords">-</span>
+                </div>
+                <div class="info-item">
+                    <strong>Posição no Mapa (px):</strong>
+                    <span id="pixel-coords">-</span>
+                </div>
+                <div class="info-item">
+                    <strong>Quadrante:</strong>
+                    <div class="quadrant-badge" id="quadrant">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="calibration-info" id="calibration-info">
+            <h3>📐 Informações de Calibração</h3>
+            <div class="calibration-point">
+                <strong style="color: #00ff00;">● Centro do Mapa:</strong><br>
+                Coordenadas: X=-142798.922, Y=-142780.359<br>
+                Posição no mapa: (540, 540) px
+            </div>
+            <div class="calibration-point">
+                <strong>● Pontos de Calibração:</strong><br>
+                Usando <strong>16 cruzamentos</strong> para calibração de alta precisão<br>
+                Método: Regressão Linear (Mínimos Quadrados)
+            </div>
+            <div class="calibration-point">
+                <strong>Escala calculada:</strong><br>
+                SCALE_X: <span id="scale-x">-</span> px/unidade<br>
+                SCALE_Y: <span id="scale-y">-</span> px/unidade
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONSTANTES DE CALIBRAÇÃO DO MAPA
+        // ============================================
+        // Calibração baseada em TODAS as 16 coordenadas dos cruzamentos
+        // Usa regressão linear (mínimos quadrados) para máxima precisão
+        const MAP_WIDTH = 1080; // Largura do mapa em pixels
+        const MAP_HEIGHT = 1080; // Altura do mapa em pixels
+        
+        // PONTO DE REFERÊNCIA: Centro do mapa
+        const CENTER_X = -142798.922;  // Coordenada X do centro do jogo
+        const CENTER_Y = -142780.359;  // Coordenada Y do centro do jogo
+        const CENTER_PIXEL_X = 540;    // Centro do mapa em pixels (X)
+        const CENTER_PIXEL_Y = 540;    // Centro do mapa em pixels (Y)
+        
+        // TODOS OS 16 CRUZAMENTOS COM COORDENADAS DO JOGO E POSIÇÕES REAIS (do JSON)
+        // Formato: { id, label, gameX, gameY, pixelX, pixelY }
+        const ALL_INTERSECTIONS = [
+            // Linha D-C (Y = 216px)
+            { id: 'D-C-4-3', label: 'D4/D3/C4/C3', gameX: 314400.000, gameY: 314399.938, pixelX: 216, pixelY: 216 },
+            { id: 'D-C-3-2', label: 'D3/D2/C3/C2', gameX: 9620.312, gameY: 314373.688, pixelX: 432, pixelY: 216 },
+            { id: 'D-C-2-1', label: 'D2/D1/C2/C1', gameX: -295196.812, gameY: 314368.094, pixelX: 648, pixelY: 216 },
+            { id: 'D-C-1-0', label: 'D1/D0/C1/C0', gameX: -599999.062, gameY: 314380.656, pixelX: 864, pixelY: 216 },
+            
+            // Linha C-B (Y = 432px)
+            { id: 'C-B-4-3', label: 'C4/C3/B4/B3', gameX: 314400.000, gameY: 9599.969, pixelX: 216, pixelY: 432 },
+            { id: 'C-B-3-2', label: 'C3/C2/B3/B2', gameX: 9599.000, gameY: 9587.815, pixelX: 432, pixelY: 432 },
+            { id: 'C-B-2-1', label: 'C2/C1/B2/B1', gameX: -295200.000, gameY: 9599.965, pixelX: 648, pixelY: 432 },
+            { id: 'C-B-1-0', label: 'C1/C0/B1/B0', gameX: -600005.250, gameY: 9593.698, pixelX: 864, pixelY: 432 },
+            
+            // Linha B-A (Y = 648px)
+            { id: 'B-A-4-3', label: 'B4/B3/A4/A3', gameX: 314401.500, gameY: -295219.562, pixelX: 216, pixelY: 648 },
+            { id: 'B-A-3-2', label: 'B3/B2/A3/A2', gameX: 9593.594, gameY: -295233.000, pixelX: 432, pixelY: 648 },
+            { id: 'B-A-2-1', label: 'B2/B1/A2/A1', gameX: -295192.781, gameY: -295188.625, pixelX: 648, pixelY: 648 },
+            { id: 'B-A-1-0', label: 'B1/B0/A1/A0', gameX: -600001.312, gameY: -295201.375, pixelX: 864, pixelY: 648 },
+            
+            // Linha A-Z (Y = 864px)
+            { id: 'A-Z-4-3', label: 'A4/A3/Z4/Z3', gameX: 314400.000, gameY: -599981.438, pixelX: 216, pixelY: 864 },
+            { id: 'A-Z-3-2', label: 'A3/A2/Z3/Z2', gameX: 9600.000, gameY: -600000.000, pixelX: 432, pixelY: 864 },
+            { id: 'A-Z-2-1', label: 'A2/A1/Z2/Z1', gameX: -295205.219, gameY: -599993.750, pixelX: 648, pixelY: 864 },
+            { id: 'A-Z-1-0', label: 'A1/A0/Z1/Z0', gameX: -600000.000, gameY: -600000.000, pixelX: 864, pixelY: 864 }
+        ];
+        
+        // ============================================
+        // CALCULA ESCALA USANDO REGRESSÃO LINEAR
+        // ============================================
+        // Usa todos os 16 pontos para calcular SCALE_X e SCALE_Y
+        // Fórmula: pixel = centro + (deltaCoord * scale)
+        // Para calcular scale: usamos mínimos quadrados
+        
+        let sumDeltaX = 0, sumDeltaY = 0;
+        let sumDeltaPixelX = 0, sumDeltaPixelY = 0;
+        let sumDeltaXDeltaPixelX = 0, sumDeltaYDeltaPixelY = 0;
+        let sumDeltaXSquared = 0, sumDeltaYSquared = 0;
+        let n = ALL_INTERSECTIONS.length;
+        
+        ALL_INTERSECTIONS.forEach(intersection => {
+            const deltaX = intersection.gameX - CENTER_X;
+            const deltaY = intersection.gameY - CENTER_Y;
+            
+            // IMPORTANTE: As posições pixelX do JSON já estão invertidas
+            // Para calcular a escala, precisamos da posição ANTES da inversão
+            // pixelX_real = 1080 - pixelX_calc, então pixelX_calc = 1080 - pixelX_real
+            const pixelX_calc = MAP_WIDTH - intersection.pixelX;
+            const pixelY_calc = intersection.pixelY; // Y não é invertido
+            
+            const deltaPixelX = pixelX_calc - CENTER_PIXEL_X;
+            const deltaPixelY = pixelY_calc - CENTER_PIXEL_Y;
+            
+            // Acumula valores para regressão linear
+            sumDeltaX += deltaX;
+            sumDeltaY += deltaY;
+            sumDeltaPixelX += deltaPixelX;
+            sumDeltaPixelY += deltaPixelY;
+            sumDeltaXDeltaPixelX += deltaX * deltaPixelX;
+            sumDeltaYDeltaPixelY += deltaY * deltaPixelY;
+            sumDeltaXSquared += deltaX * deltaX;
+            sumDeltaYSquared += deltaY * deltaY;
+        });
+        
+        // Calcula escala usando regressão linear (mínimos quadrados)
+        // SCALE = Σ(deltaCoord * deltaPixel) / Σ(deltaCoord²)
+        const SCALE_X = sumDeltaXDeltaPixelX / sumDeltaXSquared;
+        const SCALE_Y = sumDeltaYDeltaPixelY / sumDeltaYSquared;
+        
+        // Limites estimados (serão ajustados dinamicamente se necessário)
+        const MIN_X = -500000;
+        const MAX_X = 500000;
+        const MIN_Y = -500000;
+        const MAX_Y = 500000;
+
+        // ============================================
+        // FUNÇÃO: Parse das coordenadas do jogo
+        // ============================================
+        // Extrai os valores X e Y do formato do jogo:
+        // {X=-142798.922 Y=-142780.359 Z=39619.605|P=0.000000 Y=0.000000 R=0.000000}
+        function parseCoordinates(input) {
+            const regex = /X=([-+]?\d+\.?\d*)\s+Y=([-+]?\d+\.?\d*)/;
+            const match = input.match(regex);
+            
+            if (!match) {
+                throw new Error('Formato de coordenadas inválido. Use: {X=valor Y=valor ...}');
+            }
+
+            const x = parseFloat(match[1]);
+            const y = parseFloat(match[2]);
+
+            // Validação básica (apenas verifica se são números válidos)
+            if (isNaN(x) || isNaN(y)) {
+                throw new Error('Coordenadas inválidas. Verifique os valores X e Y.');
+            }
+
+            // Não bloqueia coordenadas - aceita qualquer valor válido
+            // O clamp na conversão garantirá que fique dentro do mapa visual (0-1080px)
+            // Se as coordenadas estiverem muito fora do range, o marcador ficará nas bordas
+
+            return { x, y };
+        }
+
+        // ============================================
+        // FUNÇÃO: Conversão de coordenadas do jogo para pixels
+        // ============================================
+        // Calibração baseada em posições reais dos cruzamentos (do JSON)
+        // O mapa tem inversão horizontal (X) aplicada automaticamente
+        function gameToPixel(gameX, gameY) {
+            // Calcula a diferença em relação ao centro do mapa (ponto de referência principal)
+            const deltaX = gameX - CENTER_X;
+            const deltaY = gameY - CENTER_Y;
+            
+            // Aplica a escala calculada usando as posições reais dos cruzamentos
+            // pixelX = centro + (deltaX * SCALE_X)
+            // pixelY = centro + (deltaY * SCALE_Y)
+            const calculatedX = CENTER_PIXEL_X + (deltaX * SCALE_X);
+            const calculatedY = CENTER_PIXEL_Y + (deltaY * SCALE_Y);
+
+            // APLICA INVERSÃO HORIZONTAL (X) baseada no padrão identificado no JSON
+            // Padrão: pixelX_real = MAP_WIDTH - pixelX_teorico
+            // Isso corrige a inversão do mapa do SCUM
+            const pixelX = MAP_WIDTH - calculatedX;
+            
+            // Y não precisa ser invertido (confirmado pelo JSON: pixelY = defaultY)
+            const pixelY = calculatedY;
+
+            // Clamp para garantir que fique dentro dos limites do mapa visual
+            const clampedX = Math.max(0, Math.min(MAP_WIDTH, pixelX));
+            const clampedY = Math.max(0, Math.min(MAP_HEIGHT, pixelY));
+
+            return { x: clampedX, y: clampedY };
+        }
+
+        // ============================================
+        // FUNÇÃO: Cálculo do quadrante
+        // ============================================
+        // O mapa está dividido em 5x5 quadrantes:
+        // Cada quadrante tem 216x216 px (1080 / 5)
+        // Nomenclatura: Z0-Z4, A0-A4, B0-B4, C0-C4, D0-D4
+        // Z0 = canto inferior esquerdo, D4 = canto superior direito
+        function calculateQuadrant(pixelX, pixelY) {
+            // Cada quadrante tem 216 pixels
+            const quadrantSize = MAP_WIDTH / 5;
+            
+            // Calcula o índice da coluna (0-4, da esquerda para direita)
+            const col = Math.floor(pixelX / quadrantSize);
+            // Calcula o índice da linha (0-4, de cima para baixo)
+            const row = Math.floor(pixelY / quadrantSize);
+            
+            // Limita aos valores válidos (0-4)
+            const colIndex = Math.max(0, Math.min(4, col));
+            const rowIndex = Math.max(0, Math.min(4, row));
+            
+            // Mapeia para as letras: Z (linha 4), A (linha 3), B (linha 2), C (linha 1), D (linha 0)
+            const letters = ['D', 'C', 'B', 'A', 'Z'];
+            const letter = letters[rowIndex];
+            const number = colIndex;
+            
+            return `${letter}${number}`;
+        }
+
+        // ============================================
+        // FUNÇÃO: Posiciona o marcador no mapa
+        // ============================================
+        function placeMarker(pixelX, pixelY) {
+            const marker = document.getElementById('marker');
+            const mapWrapper = document.getElementById('map-wrapper');
+            
+            // Obtém as dimensões reais do mapa renderizado
+            const mapRect = mapWrapper.getBoundingClientRect();
+            const mapImage = document.getElementById('map-image');
+            
+            // Calcula a escala (o mapa pode estar redimensionado)
+            const scaleX = mapRect.width / MAP_WIDTH;
+            const scaleY = mapRect.height / MAP_HEIGHT;
+            
+            // Calcula a posição relativa dentro do container
+            const relativeX = pixelX * scaleX;
+            const relativeY = pixelY * scaleY;
+            
+            // Posiciona o marcador
+            marker.style.left = `${relativeX}px`;
+            marker.style.top = `${relativeY}px`;
+            marker.style.display = 'block';
+        }
+
+        // ============================================
+        // FUNÇÃO: Atualiza o painel de informações
+        // ============================================
+        function updateInfoPanel(gameX, gameY, pixelX, pixelY, quadrant) {
+            document.getElementById('game-coords').textContent = `X: ${gameX.toFixed(2)}, Y: ${gameY.toFixed(2)}`;
+            document.getElementById('pixel-coords').textContent = `X: ${pixelX.toFixed(2)}px, Y: ${pixelY.toFixed(2)}px`;
+            document.getElementById('quadrant').textContent = quadrant;
+            
+            // Verifica se a coordenada foi limitada (clamped) nas bordas
+            const wasClampedX = pixelX <= 0 || pixelX >= MAP_WIDTH;
+            const wasClampedY = pixelY <= 0 || pixelY >= MAP_HEIGHT;
+            const wasClamped = wasClampedX || wasClampedY;
+            
+            // Adiciona aviso se necessário
+            let statusText = '';
+            if (wasClamped) {
+                statusText = '⚠️ Coordenada nas bordas do mapa - pode precisar de ajuste de calibração';
+            } else if (gameX < MIN_X || gameX > MAX_X || gameY < MIN_Y || gameY > MAX_Y) {
+                statusText = 'ℹ️ Coordenada fora do range padrão, mas mapeada para o mapa';
+            }
+            
+            // Atualiza ou remove status
+            let statusElement = document.getElementById('status-info');
+            if (statusText) {
+                if (!statusElement) {
+                    statusElement = document.createElement('div');
+                    statusElement.id = 'status-info';
+                    statusElement.style.marginTop = '10px';
+                    statusElement.style.padding = '10px';
+                    statusElement.style.background = wasClamped ? '#fff3cd' : '#d1ecf1';
+                    statusElement.style.borderRadius = '6px';
+                    statusElement.style.fontSize = '0.9em';
+                    document.getElementById('info-panel').appendChild(statusElement);
+                }
+                statusElement.textContent = statusText;
+                statusElement.style.display = 'block';
+            } else if (statusElement) {
+                statusElement.style.display = 'none';
+            }
+            
+            document.getElementById('info-panel').style.display = 'block';
+        }
+
+        // ============================================
+        // FUNÇÃO: Exibe mensagem de erro
+        // ============================================
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        // ============================================
+        // FUNÇÃO PRINCIPAL: Processa as coordenadas
+        // ============================================
+        function processCoordinates() {
+            const input = document.getElementById('coords-input').value.trim();
+            
+            if (!input) {
+                showError('Por favor, cole as coordenadas do jogo.');
+                return;
+            }
+
+            try {
+                // 1. Parse das coordenadas
+                const { x: gameX, y: gameY } = parseCoordinates(input);
+                
+                // 2. Conversão para pixels
+                const { x: pixelX, y: pixelY } = gameToPixel(gameX, gameY);
+                
+                // 3. Cálculo do quadrante
+                const quadrant = calculateQuadrant(pixelX, pixelY);
+                
+                // 4. Posiciona o marcador
+                placeMarker(pixelX, pixelY);
+                
+                // 5. Atualiza o painel de informações
+                updateInfoPanel(gameX, gameY, pixelX, pixelY, quadrant);
+                
+            } catch (error) {
+                showError(error.message);
+                document.getElementById('marker').style.display = 'none';
+                document.getElementById('info-panel').style.display = 'none';
+            }
+        }
+
+        // ============================================
+        // FUNÇÃO: Posiciona marcadores de calibração
+        // ============================================
+        function placeCalibrationMarkers() {
+            const mapWrapper = document.getElementById('map-wrapper');
+            const mapRect = mapWrapper.getBoundingClientRect();
+            
+            const scaleX = mapRect.width / MAP_WIDTH;
+            const scaleY = mapRect.height / MAP_HEIGHT;
+            
+            // Posiciona o marcador do centro (540, 540)
+            const centerMarker = document.getElementById('center-marker');
+            centerMarker.style.left = `${CENTER_PIXEL_X * scaleX}px`;
+            centerMarker.style.top = `${CENTER_PIXEL_Y * scaleY}px`;
+            
+            // Remove marcadores antigos de referência (não são mais necessários)
+            // Agora usamos todos os 16 cruzamentos para calibração
+        }
+
+        // ============================================
+        // FUNÇÃO: Desenha a grade de calibração
+        // ============================================
+        function drawCalibrationGrid() {
+            const grid = document.getElementById('calibration-grid');
+            const mapWrapper = document.getElementById('map-wrapper');
+            const mapRect = mapWrapper.getBoundingClientRect();
+            
+            // Limpa o SVG
+            grid.innerHTML = '';
+            
+            // Define o viewBox do SVG para corresponder ao mapa
+            grid.setAttribute('viewBox', `0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`);
+            grid.setAttribute('preserveAspectRatio', 'none');
+            
+            // Desenha linhas de grade a cada 100 unidades de coordenada do jogo
+            // Calcula quantas linhas cabem no mapa
+            const stepX = 100000; // Passo em unidades do jogo
+            const stepY = 100000;
+            
+            // Linhas verticais (com inversão X aplicada)
+            for (let x = CENTER_X - (10 * stepX); x <= CENTER_X + (10 * stepX); x += stepX) {
+                const calculatedX = CENTER_PIXEL_X + ((x - CENTER_X) * SCALE_X);
+                const pixelX = MAP_WIDTH - calculatedX; // Inverte X (padrão do JSON)
+                if (pixelX >= 0 && pixelX <= MAP_WIDTH) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', pixelX);
+                    line.setAttribute('y1', 0);
+                    line.setAttribute('x2', pixelX);
+                    line.setAttribute('y2', MAP_HEIGHT);
+                    grid.appendChild(line);
+                }
+            }
+            
+            // Linhas horizontais (sem inversão Y - confirmado pelo JSON)
+            for (let y = CENTER_Y - (10 * stepY); y <= CENTER_Y + (10 * stepY); y += stepY) {
+                const pixelY = CENTER_PIXEL_Y + ((y - CENTER_Y) * SCALE_Y);
+                if (pixelY >= 0 && pixelY <= MAP_HEIGHT) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', 0);
+                    line.setAttribute('y1', pixelY);
+                    line.setAttribute('x2', MAP_WIDTH);
+                    line.setAttribute('y2', pixelY);
+                    grid.appendChild(line);
+                }
+            }
+        }
+
+        // ============================================
+        // FUNÇÃO: Alterna a exibição da grade de calibração
+        // ============================================
+        let gridVisible = false;
+        function toggleCalibrationGrid() {
+            gridVisible = !gridVisible;
+            const grid = document.getElementById('calibration-grid');
+            const centerMarker = document.getElementById('center-marker');
+            const toggleButton = document.getElementById('grid-toggle');
+            
+            if (gridVisible) {
+                grid.style.display = 'block';
+                centerMarker.style.display = 'block';
+                toggleButton.textContent = '📐 Ocultar Grade de Calibração';
+                placeCalibrationMarkers();
+                drawCalibrationGrid();
+            } else {
+                grid.style.display = 'none';
+                centerMarker.style.display = 'none';
+                toggleButton.textContent = '📐 Mostrar Grade de Calibração';
+            }
+        }
+
+        // ============================================
+        // FUNÇÃO: Atualiza informações de calibração
+        // ============================================
+        function updateCalibrationInfo() {
+            document.getElementById('scale-x').textContent = SCALE_X.toFixed(6);
+            document.getElementById('scale-y').textContent = SCALE_Y.toFixed(6);
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        // Permite processar com Enter
+        document.getElementById('coords-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                processCoordinates();
+            }
+        });
+
+        // Reposiciona o marcador quando a janela é redimensionada
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                const input = document.getElementById('coords-input').value.trim();
+                if (input && document.getElementById('marker').style.display === 'block') {
+                    processCoordinates();
+                }
+                if (gridVisible) {
+                    placeCalibrationMarkers();
+                    drawCalibrationGrid();
+                }
+            }, 250);
+        });
+
+        // Inicializa informações de calibração ao carregar
+        updateCalibrationInfo();
+
+        // ============================================
+        // SISTEMA DE CALIBRAÇÃO COM MARCADORES ARRASTÁVEIS
+        // ============================================
+        let calibrationMode = false;
+        let calibrationData = {}; // Armazena as posições dos marcadores
+        let draggedMarker = null;
+        let dragOffset = { x: 0, y: 0 };
+
+        // Define os 16 cruzamentos dos quadrantes para o modo de calibração
+        // Mapeia ALL_INTERSECTIONS para o formato usado pelos marcadores arrastáveis
+        const quadrantIntersections = ALL_INTERSECTIONS.map((intersection, index) => {
+            // Calcula row e col baseado no índice (4 por linha)
+            const row = Math.floor(index / 4);
+            const col = index % 4;
+            // Calcula defaultX baseado na posição antes da inversão
+            const defaultX = MAP_WIDTH - intersection.pixelX;
+            return {
+                id: intersection.id,
+                label: intersection.label,
+                row: row,
+                col: col,
+                defaultX: defaultX,
+                defaultY: intersection.pixelY,
+                pixelX: intersection.pixelX,
+                pixelY: intersection.pixelY
+            };
+        });
+
+        // ============================================
+        // FUNÇÃO: Cria marcadores arrastáveis
+        // ============================================
+        function createDraggableMarkers() {
+            const container = document.getElementById('draggable-markers-container');
+            container.innerHTML = '';
+            
+            quadrantIntersections.forEach(intersection => {
+                const marker = document.createElement('div');
+                marker.className = 'draggable-marker';
+                marker.id = `marker-${intersection.id}`;
+                marker.dataset.intersectionId = intersection.id;
+                
+                // Carrega posição salva ou usa a posição REAL do JSON (pixelX, pixelY)
+                const savedPos = calibrationData[intersection.id];
+                const x = savedPos ? savedPos.x : intersection.pixelX;
+                const y = savedPos ? savedPos.y : intersection.pixelY;
+                
+                marker.style.left = `${x}px`;
+                marker.style.top = `${y}px`;
+                
+                // Label
+                const label = document.createElement('div');
+                label.className = 'marker-label';
+                label.textContent = intersection.label;
+                marker.appendChild(label);
+                
+                // Eventos de arrastar
+                marker.addEventListener('mousedown', startDrag);
+                marker.addEventListener('touchstart', startDrag);
+                
+                container.appendChild(marker);
+            });
+            
+            updateMarkerPositions();
+        }
+
+        // ============================================
+        // FUNÇÃO: Atualiza posições dos marcadores ao redimensionar
+        // ============================================
+        function updateMarkerPositions() {
+            const container = document.getElementById('draggable-markers-container');
+            const mapWrapper = document.getElementById('map-wrapper');
+            const mapRect = mapWrapper.getBoundingClientRect();
+            
+            const scaleX = mapRect.width / MAP_WIDTH;
+            const scaleY = mapRect.height / MAP_HEIGHT;
+            
+            quadrantIntersections.forEach(intersection => {
+                const marker = document.getElementById(`marker-${intersection.id}`);
+                if (marker) {
+                    const savedPos = calibrationData[intersection.id];
+                    const x = savedPos ? savedPos.x : intersection.pixelX;
+                    const y = savedPos ? savedPos.y : intersection.pixelY;
+                    
+                    marker.style.left = `${x * scaleX}px`;
+                    marker.style.top = `${y * scaleY}px`;
+                }
+            });
+        }
+
+        // ============================================
+        // FUNÇÃO: Inicia o arrasto
+        // ============================================
+        function startDrag(e) {
+            e.preventDefault();
+            draggedMarker = e.target.closest('.draggable-marker');
+            if (!draggedMarker) return;
+            
+            draggedMarker.classList.add('dragging');
+            const container = document.getElementById('draggable-markers-container');
+            const mapWrapper = document.getElementById('map-wrapper');
+            const mapRect = mapWrapper.getBoundingClientRect();
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const scaleX = mapRect.width / MAP_WIDTH;
+            const scaleY = mapRect.height / MAP_HEIGHT;
+            
+            const markerX = parseFloat(draggedMarker.style.left) || 0;
+            const markerY = parseFloat(draggedMarker.style.top) || 0;
+            
+            dragOffset.x = clientX - mapRect.left - markerX;
+            dragOffset.y = clientY - mapRect.top - markerY;
+            
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+            document.addEventListener('touchmove', onDrag);
+            document.addEventListener('touchend', stopDrag);
+        }
+
+        // ============================================
+        // FUNÇÃO: Durante o arrasto
+        // ============================================
+        function onDrag(e) {
+            if (!draggedMarker) return;
+            e.preventDefault();
+            
+            const mapWrapper = document.getElementById('map-wrapper');
+            const mapRect = mapWrapper.getBoundingClientRect();
+            
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const scaleX = mapRect.width / MAP_WIDTH;
+            const scaleY = mapRect.height / MAP_HEIGHT;
+            
+            let newX = (clientX - mapRect.left - dragOffset.x) / scaleX;
+            let newY = (clientY - mapRect.top - dragOffset.y) / scaleY;
+            
+            // Limita aos limites do mapa
+            newX = Math.max(0, Math.min(MAP_WIDTH, newX));
+            newY = Math.max(0, Math.min(MAP_HEIGHT, newY));
+            
+            // Aplica snap para cruzamentos de quadrantes
+            const snapped = snapToIntersection(newX, newY);
+            newX = snapped.x;
+            newY = snapped.y;
+            
+            draggedMarker.style.left = `${newX * scaleX}px`;
+            draggedMarker.style.top = `${newY * scaleY}px`;
+            
+            // Salva a posição
+            const intersectionId = draggedMarker.dataset.intersectionId;
+            if (!calibrationData[intersectionId]) {
+                calibrationData[intersectionId] = {};
+            }
+            calibrationData[intersectionId].x = newX;
+            calibrationData[intersectionId].y = newY;
+        }
+
+        // ============================================
+        // FUNÇÃO: Snap para cruzamentos de quadrantes
+        // ============================================
+        const SNAP_DISTANCE = 20; // Distância em pixels para ativar o snap
+        
+        function snapToIntersection(x, y) {
+            // Define todas as posições de cruzamento possíveis
+            // Linhas horizontais (entre linhas de quadrantes): 216, 432, 648, 864
+            // Linhas verticais (entre colunas de quadrantes): 216, 432, 648, 864
+            const snapLinesX = [216, 432, 648, 864];
+            const snapLinesY = [216, 432, 648, 864];
+            
+            let snappedX = x;
+            let snappedY = y;
+            
+            // Snap para linhas verticais (X)
+            for (const snapX of snapLinesX) {
+                if (Math.abs(x - snapX) <= SNAP_DISTANCE) {
+                    snappedX = snapX;
+                    break;
+                }
+            }
+            
+            // Snap para linhas horizontais (Y)
+            for (const snapY of snapLinesY) {
+                if (Math.abs(y - snapY) <= SNAP_DISTANCE) {
+                    snappedY = snapY;
+                    break;
+                }
+            }
+            
+            // Snap para cruzamentos exatos (interseção de linha vertical e horizontal)
+            for (const snapX of snapLinesX) {
+                for (const snapY of snapLinesY) {
+                    const distanceX = Math.abs(x - snapX);
+                    const distanceY = Math.abs(y - snapY);
+                    const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+                    
+                    if (distance <= SNAP_DISTANCE) {
+                        snappedX = snapX;
+                        snappedY = snapY;
+                        return { x: snappedX, y: snappedY };
+                    }
+                }
+            }
+            
+            return { x: snappedX, y: snappedY };
+        }
+
+        // ============================================
+        // FUNÇÃO: Para o arrasto
+        // ============================================
+        function stopDrag() {
+            if (draggedMarker) {
+                draggedMarker.classList.remove('dragging');
+                draggedMarker = null;
+            }
+            
+            document.removeEventListener('mousemove', onDrag);
+            document.removeEventListener('mouseup', stopDrag);
+            document.removeEventListener('touchmove', onDrag);
+            document.removeEventListener('touchend', stopDrag);
+        }
+
+        // ============================================
+        // FUNÇÃO: Alterna modo de calibração
+        // ============================================
+        function toggleCalibrationMode() {
+            calibrationMode = !calibrationMode;
+            const container = document.getElementById('draggable-markers-container');
+            const controls = document.getElementById('calibration-controls');
+            const toggleBtn = document.getElementById('calibration-mode-toggle');
+            const saveBtn = document.getElementById('save-btn');
+            const exportBtn = document.getElementById('export-btn');
+            
+            if (calibrationMode) {
+                container.style.display = 'block';
+                container.style.pointerEvents = 'auto';
+                controls.classList.add('active');
+                toggleBtn.textContent = '❌ Sair do Modo Calibração';
+                toggleBtn.style.background = '#dc3545';
+                saveBtn.style.display = 'inline-block';
+                exportBtn.style.display = 'inline-block';
+                createDraggableMarkers();
+            } else {
+                container.style.display = 'none';
+                container.style.pointerEvents = 'none';
+                controls.classList.remove('active');
+                toggleBtn.textContent = '🎯 Modo Calibração';
+                toggleBtn.style.background = '';
+                saveBtn.style.display = 'none';
+                exportBtn.style.display = 'none';
+            }
+        }
+
+        // ============================================
+        // FUNÇÃO: Salva calibração no localStorage
+        // ============================================
+        function saveCalibration() {
+            try {
+                localStorage.setItem('scum_calibration', JSON.stringify(calibrationData));
+                showSuccess('Calibração salva com sucesso!');
+            } catch (error) {
+                showError('Erro ao salvar calibração: ' + error.message);
+            }
+        }
+
+        // ============================================
+        // FUNÇÃO: Carrega calibração do localStorage
+        // ============================================
+        function loadCalibration() {
+            try {
+                const saved = localStorage.getItem('scum_calibration');
+                if (saved) {
+                    calibrationData = JSON.parse(saved);
+                    return true;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar calibração:', error);
+            }
+            return false;
+        }
+
+        // ============================================
+        // FUNÇÃO: Exporta calibração para arquivo
+        // ============================================
+        function exportCalibration() {
+            const data = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                mapWidth: MAP_WIDTH,
+                mapHeight: MAP_HEIGHT,
+                intersections: quadrantIntersections.map(intersection => {
+                    const savedPos = calibrationData[intersection.id];
+                    return {
+                        id: intersection.id,
+                        label: intersection.label,
+                        row: intersection.row,
+                        col: intersection.col,
+                        pixelX: savedPos ? savedPos.x : intersection.defaultX,
+                        pixelY: savedPos ? savedPos.y : intersection.defaultY,
+                        defaultX: intersection.defaultX,
+                        defaultY: intersection.defaultY
+                    };
+                })
+            };
+            
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `scum-calibration-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showSuccess('Arquivo de calibração gerado com sucesso!');
+        }
+
+        // ============================================
+        // FUNÇÃO: Exibe mensagem de sucesso
+        // ============================================
+        function showSuccess(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.style.background = '#d4edda';
+            errorDiv.style.color = '#155724';
+            errorDiv.style.borderLeftColor = '#28a745';
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+                errorDiv.style.background = '';
+                errorDiv.style.color = '';
+                errorDiv.style.borderLeftColor = '';
+            }, 3000);
+        }
+
+        // Carrega calibração salva ao iniciar
+        loadCalibration();
+
+        // Atualiza posições dos marcadores ao redimensionar
+        window.addEventListener('resize', function() {
+            if (calibrationMode) {
+                updateMarkerPositions();
+            }
+        });
+
+        // ============================================
+        // TESTES DE VALIDAÇÃO (comentados)
+        // ============================================
+        // Descomente para testar:
+        /*
+        console.log('Teste 1: Centro (0, 0)');
+        const center = gameToPixel(0, 0);
+        console.log('Resultado:', center); // Deve ser aproximadamente (540, 540)
+
+        console.log('Teste 2: Canto superior esquerdo (-430000, -430000)');
+        const topLeft = gameToPixel(-430000, -430000);
+        console.log('Resultado:', topLeft); // Deve ser aproximadamente (0, 0)
+
+        console.log('Teste 3: Canto inferior direito (430000, 430000)');
+        const bottomRight = gameToPixel(430000, 430000);
+        console.log('Resultado:', bottomRight); // Deve ser aproximadamente (1080, 1080)
+        */
+    </script>
+</body>
+</html>
